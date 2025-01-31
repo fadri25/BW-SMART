@@ -2,3 +2,9 @@ Verkehrsverhalten: https://www.bfs.admin.ch/bfs/de/home/statistiken/mobilitaet-v
 Fahrzeugbestand: https://www.bfs.admin.ch/bfs/de/home/statistiken/raum-umwelt/umweltindikatoren/alle-indikatoren/reaktionen-der-gesellschaft/co2-ausstoss-personenwagen.assetdetail.32386685.html
 Bestand der Personenwagen nach Treibstoffart: https://www.bfs.admin.ch/bfs/de/home/statistiken/mobilitaet-verkehr/verkehrsinfrastruktur-fahrzeuge/fahrzeuge/strassenfahrzeuge-bestand-motorisierungsgrad.assetdetail.32386712.html
 Fahrzeugkilometer auf Autobahnen: Kap2.1.1 https://www.astra.admin.ch/dam/astra/de/dokumente/abteilung_strassennetzeallgemein/verkehrsentwicklung_verfuegbarkeit_nationalstrassen_jahresbericht_2023.pdf.download.pdf/Verkehrsentwicklung_und_Verf%C3%BCgbarkeit_der_Nationalstrassen_Jahresbericht_2023.pdf
+Führerausweise: https://www.bfs.admin.ch/bfs/de/home/statistiken/mobilitaet-verkehr/personenverkehr/verkehrsverhalten/besitz-fahrzeuge-fahrausweise.assetdetail.24310788.html
+Gesamtbevölkerung 2021: https://www.bfs.admin.ch/bfs/de/home/statistiken/bevoelkerung.assetdetail.32374798.html
+Anteil Fahrleistung auf Autobahnen: https://www.admin.ch/gov/de/start/dokumentation/medienmitteilungen.msg-id-101429.html
+Fahrleistung 4.2: https://dam-api.bfs.admin.ch/hub/api/dam/assets/343552/master
+
+
