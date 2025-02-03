@@ -39,6 +39,8 @@ fahrleistung = 12580 # Durchschnittliche Fahrleistung pro Jahr
 d_fahrleistung_nstrasse = fahrleistung * autobahn_anteil # Fahrleistung pro Jahr auf Autobahn
 
 # Carpooling zusammengezählt muss man auf die gesamten Fahrzeugkilometer der Autobahn kommen
+# Knopf für Anreize (Carpooling ab 3+)
+# Autobeladung aufzeigen
 
 # Monte-Carlo-Simulation
 def simulation_carpooling_verhalten(n_runs):
@@ -53,7 +55,7 @@ def simulation_carpooling_verhalten(n_runs):
     for carpooling_anteil in carpooling_werte:
         # Fahrzeugauslastung durchschnittswert + errechneter anteil
         auslastung_vorher = 1.2
-        auslastung_nachher = 1.2 + (3.8 * (1 - np.exp(-3 * carpooling_anteil)))
+        auslastung_nachher = 1.2 + (6.8 * (1 - np.exp(-3 * carpooling_anteil)))
 
         # Reduzierte Fahrleistung
         reduzierte_fahrleistung = gesamtfahrleistung * (auslastung_vorher / auslastung_nachher) * (1 - carpooling_anteil)

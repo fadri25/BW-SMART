@@ -7,4 +7,3 @@ Gesamtbevölkerung 2021: https://www.bfs.admin.ch/bfs/de/home/statistiken/bevoel
 Anteil Fahrleistung auf Autobahnen: https://www.admin.ch/gov/de/start/dokumentation/medienmitteilungen.msg-id-101429.html
 Fahrleistung 4.2: https://dam-api.bfs.admin.ch/hub/api/dam/assets/343552/master
 
-
