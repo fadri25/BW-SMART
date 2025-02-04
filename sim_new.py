@@ -13,10 +13,11 @@ fahrzeugverteilung = {"benzin": 0.604, "diesel": 0.252, "hybrid": 0.075, "plug-i
 autobahn_anteil = 0.40  # 40% der Fahrleistung auf Nationalstrassen
 fahrleistung = 12580  # Durchschnittliche Fahrleistung pro Jahr
 d_fahrleistung_nstrasse = fahrleistung * autobahn_anteil  # Fahrleistung pro Jahr auf Autobahnen
+k_preis = 0.76
 
-# Kilometerpreis und einsparung errechnen 0.76 pro Kilometer
 # Knopf für Anreize
 # Skalierung dezimal, Jahr 2021, Pro Jahr erwähnen, nur auf Autobahnen
+# Fahrten pro Jahr statt n_runs
 
 # Monte-Carlo-Simulation
 def simulation_carpooling_verhalten(n_runs):
@@ -32,11 +33,11 @@ def simulation_carpooling_verhalten(n_runs):
     for carpooling_anteil in carpooling_werte:
         # Fahrzeugauslastung: Carpooling erst ab 3 Personen
         auslastung_vorher = 1.2
-        auslastung_nachher = 1.2 + (6.8 * (1 - np.exp(-3 * carpooling_anteil))) #auslastung_nachher = max(3, 3 + (3.8 * (1 - np.exp(-3 * carpooling_anteil)))) ##########################################################################
+        auslastung_nachher = 1.2 + (6.8 * (1 - np.exp(-3 * carpooling_anteil)))
+        #auslastung_nachher = max(3, 3 + (3.8 * (1 - np.exp(-3 * carpooling_anteil))))
 
         # Reduzierte Fahrleistung
         reduzierte_fahrleistung = gesamtfahrleistung * (auslastung_vorher / auslastung_nachher) * (1 - carpooling_anteil)
-
         # Anzahl der eingesparten Fahrzeuge
         eingesparte_fahrleistung = gesamtfahrleistung - reduzierte_fahrleistung
         fahrzeuge_reduziert = eingesparte_fahrleistung / fahrleistung
@@ -64,14 +65,16 @@ def simulation_carpooling_verhalten(n_runs):
         sum(belegung_verteilung[belegung]) * belegung for belegung in range(1, 8)
         )
 
+    """
     # Berücksichtigung der Fahrzeuge, die nicht am Carpooling teilnehmen (1 und 2 Personen)
     nicht_carpooling_fahrleistung = sum(belegung_verteilung[1]) + sum(belegung_verteilung[2])  # 1- und 2-Personen-Fahrzeuge
     gesamt_fahrleistung_simuliert += nicht_carpooling_fahrleistung
     skalierungsfaktor = gesamtfahrleistung / gesamt_fahrleistung_simuliert
     gesamt_fahrleistung_simuliert *= skalierungsfaktor
+    """
 
     # Differenz kilometer
-    eingesparte_kilometer = gesamtfahrleistung - gesamt_fahrleistung_simuliert
+    eingesparte_kilometer = reduzierte_fahrleistung * k_preis
 
     return carpooling_werte, emissions_ergebnisse, fahrzeuge_eingespart, belegung_verteilung, gesamt_fahrleistung_simuliert, eingesparte_kilometer
 
@@ -79,7 +82,7 @@ def simulation_carpooling_verhalten(n_runs):
 app = dash.Dash(__name__)
 
 app.layout = html.Div([
-    html.H1("CO2-Einsparung durch Carpooling-Adoption"),
+    html.H1("CO2-Einsparung durch Carpooling pro Jahr"),
     dcc.Slider(
         id='simulation-slider',
         min=100,
@@ -89,7 +92,21 @@ app.layout = html.Div([
         marks={i: f'{i}' for i in range(1000, 5001, 1000)}
     ),
     dcc.Graph(id='simulation-plot'),
-    html.Div(id="fahrleistung-info")  # Hier wird die Fahrleistung angezeigt
+    html.Div(id="fahrleistung-info"),  # Hier wird die Fahrleistung angezeigt
+    html.Footer(
+    [
+        f"Die Daten stammen aus dem Jahr 2021 \n",
+        html.A("Github Projekt ", href="https://github.com/fadri25/BW-SMART", target="_blank")
+    ],
+    style={
+        "textAlign": "center",
+        "marginTop": "20px",
+        "padding": "10px",
+        "fontSize": "14px",
+        "backgroundColor": "#f1f1f1",
+        "borderTop": "1px solid #ddd"
+    }
+)
 ])
 
 @app.callback(
@@ -103,15 +120,6 @@ def update_simulation(n_runs):
     fig = go.Figure()
     
     # Scatter-Plot für Emissionen
-    fig.add_trace(go.Scatter(
-        x=carpooling_werte,
-        y=emissions_ergebnisse,
-        mode='markers',
-        name="CO2-Emissionen",
-        marker=dict(color='green', opacity=0.5)
-    ))
-
-    # Scatter-Plot für CO2-Einsparung
     fig.add_trace(go.Scatter(
         x=carpooling_werte,
         y=emissions_ergebnisse,
@@ -142,7 +150,7 @@ def update_simulation(n_runs):
         ))
 
     fig.update_layout(
-        xaxis_title="Simulierter Carpooling-Anteil (%)",
+        xaxis_title="Simulierter Carpooling-Anteil",
         template="plotly_white",
         yaxis=dict(
             title=dict(
@@ -171,7 +179,7 @@ def update_simulation(n_runs):
     # Fahrleistungsanzeige als Text-Element zurückgeben
     fahrleistung_info = html.Div([
         html.P(f"Gesamte simulierte Fahrleistung: {gesamt_fahrleistung_simuliert:,.0f} km"),
-        html.P(f"Differenz: {eingesparte_kilometer:,.0f} km"),
+        html.P(f"Ersparnis: {eingesparte_kilometer:,.0f} Fr."),
     ], style={"textAlign": "center", "marginTop": "10px", "fontSize": "16px"})
 
     return fig, fahrleistung_info
