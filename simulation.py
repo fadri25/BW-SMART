@@ -1,85 +1,81 @@
-# Transport_type = PRIV_MOT_TRANSP
-# Transport_mean = CAR_DRIV, CAR_PASS, TAXI, TAXI_LIKE
-# Travel_Reason = ALL_REAS
-# Socio_DEMO_Variable_Type = ??
-# Socio_demo_variable = ??
-# UNIT_MEAS = KM (Tagesdistanz in km), MIN (Mittlere Zeit unterwegs = reduzieren)
-
-# Verteilung der Fahrzeuge Benzin (60.4%), Diesel (25.2%), Hybrid (7.5%), Plug-in-Hybrid (2.1%), Elektrisch (4.2%)
-# Nutzfahrzeuge und Lieferwagen wurden vernachlässigt
-
-import pandas as pd
-import matplotlib.pyplot as plt
+import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
-import dash
 import numpy as np
-
-vh_file_path = "./verkehrsverhalten.csv"
-vh_data = pd.read_csv(vh_file_path, delimiter=';')
-
-# Motorisierter Individualverkehr, gefahrene Kilometer und Jahr 2021
-pkw_2023 = vh_data[
-    (vh_data['TRANSPORT_TYPE'] == 'PRIV_MOT_TRANSP') &  # Motorisierter Individualverkehr
-    (vh_data['UNIT_MEAS'] == 'KM') &  # Einheit Kilometer
-    (vh_data['PERIOD_REF'] == 2021)  # Jahr 2023
-]
-gesamt_kilometer = pkw_2023['VALUE'].mean()
-print(gesamt_kilometer)
 
 # Initialdaten
 gesamtfahrleistung = 22_577_600_000  # Nationalstrassenfahrleistung (Pkw)
 gesamt_autofahrer = 8_738_791 * 0.832  # Geschätzte Autofahrende in der Schweiz
-emissionen_pro_km_g = 112.7  # g CO₂/km (durchschnittliche Emission) ############################## pro Fahrzeug
-emissionen_pro_km = emissionen_pro_km_g / 1_000_000
-fahrzeugverteilung = {"benzin": 0.604, "diesel": 0.252, "hybrid": 0.075, "plug-in hybrid": 0.021, "elektro": 0.042}  
-autobahn_anteil = 0.40  # 40% der Fahrleistung findet auf Nationalstraßen statt
-fahrleistung = 12580 # Durchschnittliche Fahrleistung pro Jahr
-d_fahrleistung_nstrasse = fahrleistung * autobahn_anteil # Fahrleistung pro Jahr auf Autobahn
-
-# Carpooling zusammengezählt muss man auf die gesamten Fahrzeugkilometer der Autobahn kommen
-# Knopf für Anreize (Carpooling ab 3+)
-# Autobeladung aufzeigen
+emissionen_pro_km_g = 112.7  # g CO₂/km (durchschnittliche Emission)
+emissionen_pro_km = emissionen_pro_km_g / 1_000_000  # Umrechnung in Tonnen/km
+fahrzeugverteilung = {"benzin": 0.604, "diesel": 0.252, "hybrid": 0.075, "plug-in hybrid": 0.021, "elektro": 0.042} 
+autobahn_anteil = 0.40  # 40% der Fahrleistung auf Nationalstrassen
+fahrleistung = 12580  # Durchschnittliche Fahrleistung pro Jahr
+d_fahrleistung_nstrasse = fahrleistung * autobahn_anteil  # Fahrleistung pro Jahr auf Autobahnen
+k_preis = 0.76 # Durchschnittlicher Preis pro Kilometer
 
 # Monte-Carlo-Simulation
 def simulation_carpooling_verhalten(n_runs):
-    np.random.seed(42)  # Reproduzierbarkeit
-
+    np.random.seed(42)  # Reproduzierbarkeit (Seed)
+    
     # Simulation von Carpooling-Adoption pro Person (normalverteilt)
     carpooling_werte = np.clip(np.random.normal(loc=0.3, scale=0.15, size=n_runs), 0.05, 0.9)
 
     emissions_ergebnisse = []
     fahrzeuge_eingespart = []
+    belegung_verteilung = {i: [] for i in range(1, 8)}  # Für Belegung 1 bis 7 Personen
 
     for carpooling_anteil in carpooling_werte:
-        # Fahrzeugauslastung durchschnittswert + errechneter anteil
-        auslastung_vorher = 1.2
+        # Fahrzeugauslastung: Carpooling erst ab 3 Personen
+        auslastung_vorher = 1.2 # Durchschnittliche Anzahl Personen im Auto
         auslastung_nachher = 1.2 + (6.8 * (1 - np.exp(-3 * carpooling_anteil)))
+        #auslastung_nachher = max(3, 3 + (3.8 * (1 - np.exp(-3 * carpooling_anteil))))
 
         # Reduzierte Fahrleistung
         reduzierte_fahrleistung = gesamtfahrleistung * (auslastung_vorher / auslastung_nachher) * (1 - carpooling_anteil)
-
-        # Anzahl der eingesparten Fahrzeuge (neue Berechnung!)
+        # Anzahl der eingesparten Fahrzeuge
         eingesparte_fahrleistung = gesamtfahrleistung - reduzierte_fahrleistung
-        fahrzeuge_reduziert = eingesparte_fahrleistung / d_fahrleistung_nstrasse
+        fahrzeuge_reduziert = eingesparte_fahrleistung / fahrleistung
 
-        # Berechnung der Emissionen nach Carpooling
+        # Berechnung der CO₂-Emissionen nach Carpooling
         emissionen = sum(
             reduzierte_fahrleistung * emissionen_pro_km * fahrzeugverteilung[typ] / 1_000
             for typ in fahrzeugverteilung
         )
 
+        # Verteilung der Fahrzeuge nach Belegung
+        total_fahrzeuge = reduzierte_fahrleistung / d_fahrleistung_nstrasse
+        for belegung in range(1, 8):  # Belegung von 1 bis 7 Personen
+            if belegung <= auslastung_nachher:
+                wahrscheinlichkeit = 1 / belegung  # Vereinfachte Wahrscheinlichkeit
+                belegung_verteilung[belegung].append(total_fahrzeuge * wahrscheinlichkeit)
+            else:
+                belegung_verteilung[belegung].append(0)
+
         emissions_ergebnisse.append(emissionen * 10000)  # CO2 in Millionen Tonnen
         fahrzeuge_eingespart.append(fahrzeuge_reduziert)
+    
+        # Berechnung der tatsächlich gefahrenen Kilometer unter Berücksichtigung der Belegung
+    gesamt_fahrleistung_simuliert = sum(
+        sum(belegung_verteilung[belegung]) * belegung for belegung in range(1, 8)
+        )
 
-    return carpooling_werte, emissions_ergebnisse, fahrzeuge_eingespart
+    nicht_carpooling_fahrleistung = sum(belegung_verteilung[1]) + sum(belegung_verteilung[2])  # 1- und 2-Personen-Fahrzeuge
+    gesamt_fahrleistung_simuliert += nicht_carpooling_fahrleistung
+    skalierungsfaktor = gesamtfahrleistung / gesamt_fahrleistung_simuliert
+    gesamt_fahrleistung_simuliert *= skalierungsfaktor
+
+    # Wirtschaftlicher Nutzen
+    gesamtkostenersparnis = reduzierte_fahrleistung * k_preis
+
+    return carpooling_werte, emissions_ergebnisse, fahrzeuge_eingespart, belegung_verteilung, gesamt_fahrleistung_simuliert, gesamtkostenersparnis
 
 # Dash-App erstellen
 app = dash.Dash(__name__)
 
 app.layout = html.Div([
-    html.H1("CO₂-Einsparung durch dynamische Carpooling-Adoption"),
+    html.H1("CO2-Einsparung durch Carpooling auf Autobahnen pro Jahr"),
     dcc.Slider(
         id='simulation-slider',
         min=100,
@@ -89,51 +85,97 @@ app.layout = html.Div([
         marks={i: f'{i}' for i in range(1000, 5001, 1000)}
     ),
     dcc.Graph(id='simulation-plot'),
+    html.Div(id="fahrleistung-info"),  # Hier wird die Fahrleistung angezeigt
+    html.Footer(
+    [
+        f"Die Daten stammen aus dem Jahr 2021 \n",
+        html.A("Github Projekt ", href="https://github.com/fadri25/BW-SMART", target="_blank")
+    ],
+    style={
+        "textAlign": "center",
+        "marginTop": "20px",
+        "padding": "10px",
+        "fontSize": "14px",
+        "backgroundColor": "#f1f1f1",
+        "borderTop": "1px solid #ddd"
+    }
+)
 ])
 
-# Callback für die Simulation
 @app.callback(
-    Output('simulation-plot', 'figure'),
+    [Output('simulation-plot', 'figure'), Output('fahrleistung-info', 'children')],
     [Input('simulation-slider', 'value')]
 )
 def update_simulation(n_runs):
-    # Simulation wird nun mit n_runs ausgeführt!
-    carpooling_werte, emissions_ergebnisse, fahrzeuge_eingespart = simulation_carpooling_verhalten(n_runs)
+    # Simulation ausführen
+    carpooling_werte, emissions_ergebnisse, fahrzeuge_eingespart, belegung_verteilung, gesamt_fahrleistung_simuliert, gesamtkostenersparnis = simulation_carpooling_verhalten(n_runs)
 
     fig = go.Figure()
-
+    
     # Scatter-Plot für Emissionen
     fig.add_trace(go.Scatter(
         x=carpooling_werte,
         y=emissions_ergebnisse,
         mode='markers',
-        name="CO₂-Emissionen",
+        name="CO2-Emissionen",
         marker=dict(color='green', opacity=0.5)
     ))
 
-    fig.add_trace(go.Scatter(
-        x=carpooling_werte,
-        y=emissions_ergebnisse,
-        mode='markers',
-        name="CO₂-Einsparung (Mt)",  # Millionen Tonnen CO₂
-        marker=dict(color='green', opacity=0.5),
-        yaxis='y1'  # Verwendet die erste Y-Achse
-    ))
-
+    # Scatter-Plot für Fahrzeugeinsparung
     fig.add_trace(go.Scatter(
         x=carpooling_werte,
         y=fahrzeuge_eingespart,
         mode='markers',
-        name="Eingesparte Fahrzeuge (Mio.)",  # Millionen Fahrzeuge
+        name="Eingesparte Fahrzeuge (Mio.)",
         marker=dict(color='blue', opacity=0.5),
-        yaxis='y2'  # Verwendet die zweite Y-Achse
+        yaxis="y2"
     ))
 
+    # Linien für Fahrzeugbelegungen
+    for belegung, werte in belegung_verteilung.items():
+        fig.add_trace(go.Scatter(
+            x=carpooling_werte,
+            y=werte,
+            mode='lines',
+            name=f"Belegung: {belegung} Personen",
+            line=dict(width=2),
+            opacity=0.6
+        ))
+
     fig.update_layout(
-        yaxis=dict(title="CO₂-Einsparung (Tonnen)"),
-        yaxis2=dict(title="Eingesparte Fahrzeuge (Millionen)", overlaying='y', side='right')
+        xaxis_title="Simulierter Carpooling-Anteil",
+        template="plotly_white",
+        yaxis=dict(
+            title=dict(
+                text="CO2-Einsparung (Tonnen)",
+                font=dict(size=14)
+            )
+        ),
+        yaxis2=dict(
+            title=dict(
+                text="Eingesparte Fahrzeuge (Millionen)",
+                font=dict(size=14)
+            ),
+            overlaying="y",
+            side="right",
+            showgrid=False
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.5,  # Position unterhalb der Grafik
+            xanchor="center",
+            x=0.5
+        )
     )
-    return fig
+
+    # Fahrleistungsanzeige als Text-Element zurückgeben
+    fahrleistung_info = html.Div([
+        html.P(f"Gesamte simulierte Fahrleistung: {gesamt_fahrleistung_simuliert:,.0f} km"),
+        html.P(f"Ersparnis: {gesamtkostenersparnis:,.0f} Fr."),
+    ], style={"textAlign": "center", "marginTop": "10px", "fontSize": "16px"})
+
+    return fig, fahrleistung_info
 
 # App starten
 if __name__ == '__main__':
